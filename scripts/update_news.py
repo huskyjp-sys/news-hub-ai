@@ -1,4 +1,4 @@
-
+import urllib.error
 import json
 import os
 import re
@@ -85,9 +85,14 @@ def ai_summary(title, description):
             result.get("points", "")
         )
 
-    except Exception as error:
-        print("AI要約エラー:", error)
-        return description or "要約を取得できませんでした。", ""
+   except urllib.error.HTTPError as error:
+    detail = error.read().decode("utf-8", errors="replace")
+    print("AI要約エラー:", error.code, detail)
+    return description or "要約を取得できませんでした。01", ""
+
+except Exception as error:
+    print("AI要約エラー:", error)
+    return description or "要約を取得できませんでした。02", ""
 
 
 articles = []
