@@ -30,18 +30,18 @@ def ai_summary(title, description):
         return description or "AI要約は未設定です。", ""
 
     prompt = f"""
-以下のニュース情報を日本語で整理してください。
+次のニュースを日本語で整理してください。
 
 タイトル：{title}
 記事概要：{description}
 
-次の形式のJSONだけを返してください。
+必ず次の形式のJSONだけを返してください。
 {{
   "summary": "ニュースの内容を100文字程度で要約",
-  "points": "重要ポイントを3つ。各項目を・で区切る"
+  "points": "・重要ポイント1 ・重要ポイント2 ・重要ポイント3"
 }}
 
-事実を勝手に補わず、不明なことは断定しないでください。
+事実を補わず、不明なことは断定しないでください。
 """
 
     payload = {
@@ -49,7 +49,7 @@ def ai_summary(title, description):
         "messages": [
             {
                 "role": "system",
-                "content": "あなたは正確性を重視する日本語ニュース編集者です。"
+                "content": "あなたは正確性を重視する日本語ニュース編集者です。必ずJSON形式で回答してください。"
             },
             {
                 "role": "user",
@@ -57,45 +57,61 @@ def ai_summary(title, description):
             }
         ],
         "temperature": 0.2,
-        "max_completion_tokens": 500
+        "max_completion_tokens": 400,
+        "response_format": {
+            "type": "json_object"
+        }
     }
 
-    request = urllib.request.Request(
-        "https://api.groq.com/openai/v1/chat/completions",
-        data=json.dumps(payload).encode("utf-8"),
-        headers={
-            "Authorization": "Bearer " + API_KEY,
-            "Content-Type": "application/json",
-            "User-Agent": "NEWS-HUB-AI/1.0"
-        },
-        method="POST"
-    )
+    request_data = json.dumps(payload).encode("utf-8")
 
-    try:
-        with urllib.request.urlopen(request, timeout=60) as response:
-            result = json.loads(response.read().decode("utf-8"))
-
-        content = result["choices"][0]["message"]["content"]
-        match = re.search(r"\{.*\}", content, re.S)
-
-        if not match:
-            raise ValueError("JSON形式の回答がありません")
-
-        result = json.loads(match.group())
-
-        return (
-            result.get("summary", description),
-            result.get("points", "")
+    for attempt in range(3):
+        request = urllib.request.Request(
+            "https://api.groq.com/openai/v1/chat/completions",
+            data=request_data,
+            headers={
+                "Authorization": "Bearer " + API_KEY,
+                "Content-Type": "application/json",
+                "User-Agent": "NEWS-HUB-AI/1.0"
+            },
+            method="POST"
         )
 
-    except urllib.error.HTTPError as error:
-        detail = error.read().decode("utf-8", errors="replace")
-        print("AI要約エラー:", error.code, detail)
-        return description or "要約を取得できませんでした。", ""
+        try:
+            with urllib.request.urlopen(request, timeout=60) as response:
+                result = json.loads(response.read().decode("utf-8"))
 
-    except Exception as error:
-        print("AI要約エラー:", error)
-        return description or "要約を取得できませんでした。", ""
+            content = result["choices"][0]["message"]["content"]
+
+            if not content:
+                raise ValueError("AIの回答が空でした")
+
+            parsed = json.loads(content)
+
+            summary = parsed.get("summary", "")
+            points = parsed.get("points", "")
+
+            if not summary:
+                raise ValueError("要約が空でした")
+
+            return summary, points
+
+        except urllib.error.HTTPError as error:
+            detail = error.read().decode("utf-8", errors="replace")
+
+            if error.code == 429 and attempt < 2:
+                print("利用上限に到達。15秒待って再試行します")
+                time.sleep(15)
+                continue
+
+            print("AI要約エラー:", error.code, detail)
+            return description or "要約を取得できませんでした。", ""
+
+        except Exception as error:
+            print("AI要約エラー:", error)
+            return description or "要約を取得できませんでした。", ""
+
+    return description or "要約を取得できませんでした。", ""
 
 
 articles = []
@@ -116,7 +132,7 @@ for category, query in categories.items():
         with urllib.request.urlopen(request, timeout=20) as response:
             root = ET.fromstring(response.read())
 
-        for item in root.findall(".//item")[:8]:
+        for item in root.findall(".//item")[:5]:
             title = item.findtext("title", "")
             link = item.findtext("link", "")
             source = item.findtext("source", "Google News")
@@ -132,7 +148,7 @@ for category, query in categories.items():
                 summary, points = ai_summary(
                     title, description
                 )
-                time.sleep(2.1)
+                time.sleep(8)
             else:
                 summary = description or "概要なし"
                 points = ""
