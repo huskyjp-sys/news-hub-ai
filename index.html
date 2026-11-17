@@ -1,0 +1,182 @@
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#101522">
+<title>NEWS HUB AI</title>
+<link rel="manifest" href="manifest.json">
+<style>
+*{box-sizing:border-box}
+body{
+  margin:0;background:#101522;color:#e8edf7;
+  font-family:Arial,"Noto Sans JP",sans-serif;
+}
+header{
+  padding:22px 18px 14px;
+  background:#171f30;border-bottom:1px solid #29344a;
+  position:sticky;top:0;z-index:5;
+}
+.logo{font-size:24px;font-weight:bold;color:#65b5ff}
+.sub{font-size:12px;color:#8e9bb1;margin-top:5px}
+nav{
+  display:flex;gap:8px;overflow-x:auto;
+  padding:14px 12px;scrollbar-width:none;
+}
+nav button{
+  flex-shrink:0;border:1px solid #34415a;
+  background:#1b2639;color:#cbd5e5;
+  padding:9px 14px;border-radius:20px;
+}
+nav button.active{background:#2479c9;color:white}
+main{padding:4px 14px 30px}
+.info{font-size:12px;color:#91a1b9;margin:8px 3px 14px}
+.card{
+  background:#192438;border:1px solid #293750;
+  border-radius:13px;padding:16px;margin-bottom:13px;
+}
+.tag{font-size:11px;color:#65b5ff}
+h2{font-size:17px;line-height:1.5;margin:8px 0}
+.source{font-size:11px;color:#8998af;margin-bottom:12px}
+.summary{font-size:13px;line-height:1.8;color:#d4ddeb}
+.points{
+  margin-top:12px;padding:11px;
+  background:#222f45;border-radius:8px;
+  font-size:12px;line-height:1.8;
+}
+a{color:#65b5ff;text-decoration:none}
+.empty{text-align:center;padding:45px 10px;color:#91a1b9}
+.search{
+  width:100%;padding:12px;border-radius:9px;
+  border:1px solid #34415a;background:#192438;
+  color:white;font-size:14px;
+}
+button{cursor:pointer}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">🌐 NEWS HUB AI</div>
+  <div class="sub">世界のニュースを、AIでわかりやすく。</div>
+</header>
+
+<nav id="categories"></nav>
+
+<main>
+  <input id="search" class="search"
+    placeholder="🔍 ニュースを検索...">
+  <div class="info" id="updated">ニュースを読み込み中...</div>
+  <section id="news">
+    <div class="empty">ニュースを取得しています...</div>
+  </section>
+</main>
+
+<script>
+const categories=[
+ "すべて","国内","テクノロジー","AI",
+ "エンタメ","科学","医療","株式","投資"
+];
+
+let selected="すべて";
+let articles=[];
+
+const nav=document.getElementById("categories");
+const news=document.getElementById("news");
+const search=document.getElementById("search");
+
+categories.forEach(category=>{
+ const button=document.createElement("button");
+ button.textContent=category;
+ button.className=category==="すべて"?"active":"";
+ button.onclick=()=>{
+   selected=category;
+   document.querySelectorAll("nav button")
+    .forEach(b=>b.classList.toggle("active",
+      b.textContent===category));
+   render();
+ };
+ nav.appendChild(button);
+});
+
+function escapeHTML(value){
+ return String(value??"").replace(/[&<>"']/g,c=>({
+ "&":"&amp;","<":"&lt;",">":"&gt;",
+ '"':"&quot;","'":"&#39;"
+ }[c]));
+}
+
+function render(){
+ const keyword=search.value.toLowerCase();
+
+ const filtered=articles.filter(a=>{
+  const categoryOK=selected==="すべて"||
+    a.category===selected;
+  const text=[a.title,a.summary,a.category,a.source]
+    .join(" ").toLowerCase();
+  return categoryOK&&text.includes(keyword);
+ });
+
+ if(!filtered.length){
+  news.innerHTML='<div class="empty">ニュースがありません</div>';
+  return;
+ }
+
+ news.innerHTML=filtered.map(a=>`
+ <article class="card">
+  <div class="tag">${escapeHTML(a.category)}</div>
+  <h2>${escapeHTML(a.title)}</h2>
+  <div class="source">
+   ${escapeHTML(a.source||"ニュース")}
+   ${escapeHTML(a.published_at||"")}
+  </div>
+  <div class="summary">
+   ${escapeHTML(a.summary||"")}
+  </div>
+  ${a.points?`
+   <div class="points">
+    <b>📌 重要ポイント</b><br>
+    ${escapeHTML(a.points)}
+   </div>`:""}
+  ${a.url?`
+   <p><a href="${escapeHTML(a.url)}"
+   target="_blank" rel="noopener">記事を読む →</a></p>`:""}
+ </article>
+ `).join("");
+}
+
+search.addEventListener("input",render);
+
+async function loadNews(){
+ try{
+  const response=await fetch(
+   "data/news.json?t="+Date.now(),
+   {cache:"no-store"}
+  );
+  if(!response.ok)throw new Error("データ未公開");
+  const data=await response.json();
+  articles=data.articles||[];
+  document.getElementById("updated").textContent=
+   "最終更新："+(data.updated_at||"取得済み");
+  render();
+ }catch(error){
+  news.innerHTML=`
+   <div class="empty">
+    まだニュースデータがありません。<br>
+    データ取得の設定が完了すると表示されるよ。
+   </div>`;
+  document.getElementById("updated").textContent=
+   "ニュースデータの準備中";
+ }
+}
+
+if("serviceWorker" in navigator){
+ window.addEventListener("load",()=>{
+  navigator.serviceWorker.register("./sw.js").catch(()=>{});
+ });
+}
+
+loadNews();
+</script>
+</body>
+</html>
