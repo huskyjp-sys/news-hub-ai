@@ -106,7 +106,11 @@ for category, query in categories.items():
     try:
         request = urllib.request.Request(
             url,
-            headers={"User-Agent": "Mozilla/5.0"}
+            headers={
+    "Authorization": f"Bearer {API_KEY}",
+    "Content-Type": "application/json",
+    "User-Agent": "NEWS-HUB-AI/1.0"
+},
         )
 
         with urllib.request.urlopen(request, timeout=20) as response:
