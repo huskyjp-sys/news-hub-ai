@@ -85,15 +85,14 @@ def ai_summary(title, description):
             result.get("points", "")
         )
 
-   except urllib.error.HTTPError as error:
-    detail = error.read().decode("utf-8", errors="replace")
-    print("AI要約エラー:", error.code, detail)
-    return description or "要約を取得できませんでした。01", ""
+    except urllib.error.HTTPError as error:
+        detail = error.read().decode("utf-8", errors="replace")
+        print("AI要約エラー:", error.code, detail)
+        return description or "要約を取得できませんでした。", ""
 
-except Exception as error:
-    print("AI要約エラー:", error)
-    return description or "要約を取得できませんでした。02", ""
-
+    except Exception as error:
+        print("AI要約エラー:", error)
+        return description or "要約を取得できませんでした。", ""
 
 articles = []
 
