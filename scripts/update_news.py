@@ -62,7 +62,7 @@ JSONやコードブロックは使わないでください。
             }
         ],
         "temperature": 0.2,
-        "max_completion_tokens": 500
+        "max_completion_tokens": 1500
     }
 
     request_data = json.dumps(payload).encode("utf-8")
