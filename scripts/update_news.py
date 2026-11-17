@@ -1,3 +1,4 @@
+
 import urllib.error
 import json
 import os
@@ -22,6 +23,7 @@ categories = {
     "株式": "日本 株式市場",
     "投資": "投資 経済"
 }
+
 
 def ai_summary(title, description):
     if not API_KEY:
@@ -63,7 +65,8 @@ def ai_summary(title, description):
         data=json.dumps(payload).encode("utf-8"),
         headers={
             "Authorization": "Bearer " + API_KEY,
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
+            "User-Agent": "NEWS-HUB-AI/1.0"
         },
         method="POST"
     )
@@ -94,6 +97,7 @@ def ai_summary(title, description):
         print("AI要約エラー:", error)
         return description or "要約を取得できませんでした。", ""
 
+
 articles = []
 
 for category, query in categories.items():
@@ -106,11 +110,7 @@ for category, query in categories.items():
     try:
         request = urllib.request.Request(
             url,
-            headers={
-    "Authorization": f"Bearer {API_KEY}",
-    "Content-Type": "application/json",
-    "User-Agent": "NEWS-HUB-AI/1.0"
-},
+            headers={"User-Agent": "Mozilla/5.0"}
         )
 
         with urllib.request.urlopen(request, timeout=20) as response:
@@ -136,7 +136,7 @@ for category, query in categories.items():
             else:
                 summary = description or "概要なし"
                 points = ""
-                
+
             articles.append({
                 "category": category,
                 "title": title,
@@ -149,6 +149,7 @@ for category, query in categories.items():
 
     except Exception as error:
         print(category, error)
+
 
 data = {
     "updated_at": datetime.now(
