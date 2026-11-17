@@ -128,7 +128,7 @@ for category, query in categories.items():
             else:
                 summary = description or "概要なし"
                 points = ""
-
+                
             articles.append({
                 "category": category,
                 "title": title,
