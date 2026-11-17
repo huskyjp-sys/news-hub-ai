@@ -30,18 +30,23 @@ def ai_summary(title, description):
         return description or "AI要約は未設定です。", ""
 
     prompt = f"""
-次のニュースを日本語で整理してください。
+次のニュースを日本語で簡潔に整理してください。
 
 タイトル：{title}
 記事概要：{description}
 
-必ず次の形式のJSONだけを返してください。
-{{
-  "summary": "ニュースの内容を100文字程度で要約",
-  "points": "・重要ポイント1 ・重要ポイント2 ・重要ポイント3"
-}}
+必ず次の形式で回答してください。
 
-事実を補わず、不明なことは断定しないでください。
+要約：
+ニュースの内容を100文字程度で説明
+
+ポイント：
+・重要ポイント1
+・重要ポイント2
+・重要ポイント3
+
+JSONやコードブロックは使わないでください。
+記事概要にない事実は追加しないでください。
 """
 
     payload = {
@@ -49,7 +54,7 @@ def ai_summary(title, description):
         "messages": [
             {
                 "role": "system",
-                "content": "あなたは正確性を重視する日本語ニュース編集者です。必ずJSON形式で回答してください。"
+                "content": "あなたは正確性を重視する日本語ニュース編集者です。指定された形式で簡潔に回答してください。"
             },
             {
                 "role": "user",
@@ -57,10 +62,7 @@ def ai_summary(title, description):
             }
         ],
         "temperature": 0.2,
-        "max_completion_tokens": 400,
-        "response_format": {
-            "type": "json_object"
-        }
+        "max_completion_tokens": 500
     }
 
     request_data = json.dumps(payload).encode("utf-8")
@@ -81,18 +83,35 @@ def ai_summary(title, description):
             with urllib.request.urlopen(request, timeout=60) as response:
                 result = json.loads(response.read().decode("utf-8"))
 
-            content = result["choices"][0]["message"]["content"]
+            content = result["choices"][0]["message"]["content"].strip()
 
-            if not content:
-                raise ValueError("AIの回答が空でした")
+            summary_match = re.search(
+                r"要約[：:]\s*(.*?)(?=ポイント[：:]|$)",
+                content,
+                re.S
+            )
 
-            parsed = json.loads(content)
+            points_match = re.search(
+                r"ポイント[：:]\s*(.*)",
+                content,
+                re.S
+            )
 
-            summary = parsed.get("summary", "")
-            points = parsed.get("points", "")
+            if summary_match:
+                summary = summary_match.group(1).strip()
+            else:
+                summary = content
+
+            points = (
+                points_match.group(1).strip()
+                if points_match else ""
+            )
+
+            summary = summary.replace("```", "").strip()
+            points = points.replace("```", "").strip()
 
             if not summary:
-                raise ValueError("要約が空でした")
+                raise ValueError("AIの要約が空でした")
 
             return summary, points
 
