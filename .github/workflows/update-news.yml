@@ -22,6 +22,8 @@ jobs:
           python-version: "3.12"
 
       - name: Collect news
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
         run: python scripts/update_news.py
 
       - name: Save news data
