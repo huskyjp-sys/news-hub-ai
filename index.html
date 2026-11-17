@@ -156,8 +156,24 @@ async function loadNews(){
   if(!response.ok)throw new Error("データ未公開");
   const data=await response.json();
   articles=data.articles||[];
-  document.getElementById("updated").textContent=
-   "最終更新："+(data.updated_at||"取得済み");
+   
+  const updatedDate = data.updated_at
+  ? new Date(data.updated_at)
+  : null;
+
+document.getElementById("updated").textContent =
+  updatedDate && !isNaN(updatedDate)
+    ? "最終更新：" + updatedDate.toLocaleString("ja-JP", {
+        timeZone: "Asia/Tokyo",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false
+      })
+    : "最終更新：不明";
+   
   render();
  }catch(error){
   news.innerHTML=`
