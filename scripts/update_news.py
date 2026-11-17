@@ -84,6 +84,7 @@ JSONやコードブロックは使わないでください。
                 result = json.loads(response.read().decode("utf-8"))
 
             content = result["choices"][0]["message"]["content"].strip()
+            print("AI生回答:", repr(content))
 
             summary_match = re.search(
                 r"要約[：:]\s*(.*?)(?=ポイント[：:]|$)",
